@@ -1,0 +1,17 @@
+.idea
+*.pyc
+*~
+__pycache__/*
+env/
+.env
+.deploy.env
+cache/*
+misc/*
+/*.sql
+scripts/*.json
+htmlcov/*
+.pytest_cache/*
+reload
+.DS_Store
+.coverage
+output.json
