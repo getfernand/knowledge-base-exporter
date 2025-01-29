@@ -12,6 +12,7 @@ As for now, only Crisp is working well with this, but a work in progress is bein
  * Intercom
  * Next
  * Notion
+ * Gitbook (requires a Chrome-based browser)
 
 Future implementation will be about:
 
