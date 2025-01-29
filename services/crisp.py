@@ -93,17 +93,7 @@ class Crisp(KnowledgeBaseImporter):
                 del item['onclick']
 
             if item.name == 'img':
-                del item['loading']  # Or should we ?
-                if not item.get('alt'):
-                    del item['alt']
-
-                if item.parent.name in ('p', 'div', 'span') and not item.parent.text.strip():
-                    item.parent.unwrap()
-
-                if item.parent.name != 'figure':
-                    item.wrap(soup.new_tag('figure'))
-
-                item.parent['class'] = ['align--center width--normal']
+                self.wrap_image_figure(item, soup)
             elif item.name == 'br':
                 del item['class']
             elif item.name == 'a':
@@ -126,19 +116,7 @@ class Crisp(KnowledgeBaseImporter):
                 del item['class']
                 iframe = next(item.children, None)
                 assert iframe.name == 'iframe'
-                iframe['src'] = self._video_no_cookie(iframe['src'])
-                iframe['allowfullscreen'] = 'allowfullscreen'
-                iframe['allow'] = 'fullscreen; picture-in-picture'
-                iframe['frameborder'] = '0'
-                iframe.parent['class'] = 'video-embed'
-                if 'height' in iframe.attrs:
-                    del iframe.attrs['height']
-                if 'width' in iframe.attrs:
-                    del iframe.attrs['width']
-                if 'loading' in iframe.attrs:
-                    del iframe.attrs['loading']
-                if 'type' in iframe.attrs:
-                    del iframe.attrs['type']
+                self.clean_iframe(iframe)
 
             elif 'csh-markdown-emphasis' in classes:
                 item.name = 'div'

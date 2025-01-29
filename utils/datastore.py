@@ -69,6 +69,16 @@ class KnowledgeData(dict):
         for k in metadata:
             self.metadata[k] = metadata[k]
 
+    def add_link(self, position, title, url):
+        if 'links' not in self.metadata:
+            self.metadata['links'] = []
+
+        self.metadata['links'].append({
+            'title': title,
+            'url': url,
+            'position': position
+        })
+
     def add_category(self, parent_id, title, url=None, icon=None, slug=None, description=None, seo_title=None, seo_description=None):
         assert title is not None, "Title is required"
 
@@ -122,4 +132,7 @@ class KnowledgeData(dict):
         return identifier
 
     def add_article_to_category(self, article_id, category_id):
+        if category_id is None and category_id not in self.categories:
+            self.categories[None] = {'articles': []}
+
         self.categories[category_id]['articles'].append(article_id)

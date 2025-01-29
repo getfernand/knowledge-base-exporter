@@ -69,10 +69,7 @@ class Helpscout(KnowledgeBaseImporter):
                 img.parent.unwrap()
 
             # If the parent is not a figure, we need to wrap it in one
-            if img.parent.name != 'figure':
-                img.wrap(soup.new_tag('figure'))
-
-            img.parent['class'] = ['align--center width--normal']
+            self.wrap_image_figure(img, soup)
 
         # Now treating the videos:
         for div in full_article.find_all('div'):
@@ -94,14 +91,6 @@ class Helpscout(KnowledgeBaseImporter):
                     raise AssertionError('Unexpected class name: {}'.format(classname))
 
         for iframe in full_article.find_all('iframe'):
-            iframe['src'] = self._video_no_cookie(iframe['src'])
-            iframe['allowfullscreen'] = 'allowfullscreen'
-            iframe['allow'] = 'fullscreen; picture-in-picture'
-            iframe['frameborder'] = '0'
-            iframe.parent['class'] = 'video-embed'
-            if 'height' in iframe.attrs:
-                del iframe.attrs['height']
-            if 'width' in iframe.attrs:
-                del iframe.attrs['width']
+            self.clean_iframe(iframe)
 
         return str(full_article)

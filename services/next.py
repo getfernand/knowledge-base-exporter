@@ -9,11 +9,9 @@ HEADING_MAPPER = {'heading': 'h2', 'subheading': 'h3', 'subheading3': 'h4', 'sub
 
 
 class Next(KnowledgeBaseImporter):
-    def load(self, base_url: str, language=None):
+    def load(self, base_url: str):
         if not base_url.endswith('/'):
             base_url += '/'
-
-        assert base_url.endswith('/en/'), 'Unexpected language. Only "EN" allowed for now. (Path must end with /en/)'
 
         self.add_language('en', base_url)
         data = self.retrieve(self.base_url)

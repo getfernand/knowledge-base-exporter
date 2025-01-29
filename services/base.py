@@ -67,6 +67,12 @@ class KnowledgeBaseImporter:
     def set_metadata(self, metadata):
         self.datastores[self.current_language].set_metadata(metadata)
 
+    def add_header_link(self, title, url):
+        self.datastores[self.current_language].add_link('header', title, url)
+
+    def add_footer_link(self, title, url):
+        self.datastores[self.current_language].add_link('footer', title, url)
+
     def _video_no_cookie(self, url):
         if not url:
             return url
@@ -87,3 +93,34 @@ class KnowledgeBaseImporter:
             pass
 
         return parsed_url.geturl()
+
+    def wrap_image_figure(self, item, soup):
+        for k in ('class', 'fetchpriority', 'height', 'width', 'sizes', 'srcset', 'loading'):
+            if k in item.attrs:
+                del item[k]
+
+        if not item.get('alt'):
+            del item['alt']
+
+        if item.parent.name in ('p', 'div', 'span') and not item.parent.text.strip():
+            item.parent.unwrap()
+
+        if item.parent.name != 'figure':
+            item.wrap(soup.new_tag('figure'))
+
+        item.parent['class'] = ['align--center width--normal']
+
+    def clean_iframe(self, item):
+        item['src'] = self._video_no_cookie(item['src'])
+        item['allowfullscreen'] = 'allowfullscreen'
+        item['allow'] = 'fullscreen; picture-in-picture'
+        item['frameborder'] = '0'
+        item.parent['class'] = 'video-embed'
+        if 'height' in item.attrs:
+            del item.attrs['height']
+        if 'width' in item.attrs:
+            del item.attrs['width']
+        if 'loading' in item.attrs:
+            del item.attrs['loading']
+        if 'type' in item.attrs:
+            del item.attrs['type']
