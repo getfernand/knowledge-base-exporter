@@ -95,8 +95,8 @@ class Helpkit(Nuxt):
             article_content = self.retrieve(article['previous_url'])
             try:
                 last_update_str = article_content.select('.helpkit-article-meta-wrapper p')[0].text.replace('Last updated on', '').strip().lower()
-                article['last_update'] = datetime.datetime.strptime(last_update_str, '%B %d, %Y')
-            except IndexError:
+                article['last_updated'] = datetime.datetime.strptime(last_update_str, '%B %d, %Y').isoformat()
+            except IndexError as e:
                 pass  # It can happen that there is no date!
 
             try:
@@ -117,6 +117,7 @@ class Helpkit(Nuxt):
                     'slug': article['slug'],
                     'description': article['description'],
                     'previous_url': article['previous_url'],
+                    'last_updated': article.get('last_updated'),
                     'content': output
                 }
             )
@@ -220,6 +221,8 @@ class Helpkit(Nuxt):
                     if len(classlist) == 0:
                         k.unwrap()
                     elif classlist == ['notion-spacer'] or classlist == ['notion-sync-block']:
+                        k.unwrap()
+                    elif classlist == ['notion-indent']:
                         k.unwrap()
                     elif 'notion-blank' in classlist:
                         k.replace_with(BeautifulSoup('<p></p>', 'html.parser'))
