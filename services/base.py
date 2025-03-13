@@ -3,7 +3,7 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, urlencode
 from utils.datastore import KnowledgeData
-import requests
+import requests, os, base64
 
 
 class KnowledgeBaseImporter:
@@ -41,13 +41,50 @@ class KnowledgeBaseImporter:
 
         return self.base_url + url
 
-    def retrieve(self, url, return_url=False, **kwargs) -> BeautifulSoup:
-        url = self.get_url(url)
+    def get_cached_version(self, url):
+        cache_fp = os.path.join('tmp', base64.b64encode(url.encode()).decode())
+        if os.path.exists(cache_fp):
+            with open(cache_fp, 'r') as f:
+                complete = f.read()
+                url, content = complete.split('\n\n', 1)
+                return url, content
 
-        r = requests.get(url, **kwargs)
-        soup = BeautifulSoup(r.content, features='html.parser')
+        return None, None
+
+    def cache_request(self, original_url, destination_url, content):
+        if not os.path.exists('tmp'):
+            # create folder
+            os.mkdir('tmp')
+
+        cache_fp = os.path.join('tmp', base64.b64encode(original_url.encode()).decode())
+        if not os.path.exists(cache_fp):
+            with open(cache_fp, 'w') as f:
+                f.write(destination_url)
+                f.write('\n\n')
+                f.write(content)
+
+        return destination_url, content
+
+    def remove_cache(self, url):
+        cache_fp = os.path.join('tmp', base64.b64encode(url.encode()).decode())
+        if os.path.exists(cache_fp):
+            os.remove(cache_fp)
+
+    def retrieve(self, url, return_url=False, **kwargs) -> BeautifulSoup:
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = 10
+
+        url = self.get_url(url)
+        new_url, cached = self.get_cached_version(url)
+        if not cached:
+            r = requests.get(url, **kwargs)
+            r.raise_for_status()
+            new_url, cached = self.cache_request(url, r.url, r.content.decode())
+
+        soup = BeautifulSoup(cached, features='html.parser')
+
         if return_url:
-            return r.url, soup
+            return new_url, soup
 
         return soup
 
