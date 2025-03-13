@@ -28,13 +28,8 @@ class Gitbook(KnowledgeBaseImporter):
 
     def retrieve(self, url, return_url=False):
         url = self.get_url(url)
-
-        if not os.path.exists('tmp'):
-            # create folder
-            os.mkdir('tmp')
-
-        cache_fp = os.path.join('tmp', base64.b64encode(url.encode()).decode())
-        if not os.path.exists(cache_fp):
+        new_url, html_content = self.get_cached_version(url)
+        if not html_content:
             if len(self.browser.contexts) == 0:
                 self.browser.new_context()
 
@@ -53,15 +48,7 @@ class Gitbook(KnowledgeBaseImporter):
 
             html_content = page.content()
             new_url = page.url
-
-            with open(cache_fp, 'w') as f:
-                f.write(page.url)
-                f.write('\n\n')
-                f.write(html_content)
-        else:
-            with open(cache_fp, 'r') as f:
-                complete = f.read()
-                new_url, html_content = complete.split('\n\n', 1)
+            new_url, html_content = self.cache_request(url, new_url, html_content)
 
         soup = BeautifulSoup(html_content, features='html.parser')
         if return_url:
@@ -113,7 +100,7 @@ class Gitbook(KnowledgeBaseImporter):
         for link in list(menu.children)[1].find_all('a'):
             self.add_header_link(link.get_text(), link.attrs['href'])
 
-        articles = self.add_submenu(None, soup.select_one('body>div>div>aside>div>div>ul'))
+        articles = self.add_submenu(None, soup.select_one('body>div aside>div>div>ul'))
 
         for article_url in articles:
             article = {}
@@ -122,6 +109,10 @@ class Gitbook(KnowledgeBaseImporter):
             article_main = article_soup.select_one('div>main')
 
             childs = list(article_main.children)
+            if len(childs) == 3:
+                print('NO CONTENT FOR', article_url)
+                continue
+
             assert len(childs) == 4
 
             article['title'] = childs[0].select_one('h1').get_text()
@@ -219,7 +210,7 @@ class Gitbook(KnowledgeBaseImporter):
                 print(item)
                 print('unknown role', item.attrs['role'])
 
-            for k in ('aria-busy', 'aria-label', 'aria-labelledby', 'aria-modal', 'role', 'style', 'tabindex', 'teleport', 'type'):
+            for k in ('aria-busy', 'aria-label', 'aria-labelledby', 'aria-modal', 'role', 'style', 'tabindex', 'teleport', 'type', 'aria-hidden', 'aria-expanded'):
                 if k in item.attrs:
                     del item.attrs[k]
 
@@ -275,7 +266,23 @@ class Gitbook(KnowledgeBaseImporter):
                     classes.append('callout--warning')
 
                 childs = list(item.children)
-                assert len(childs) == 1
+                if len(childs) == 2:
+                    # Has icon
+                    classes.append('callout--icon')
+
+                    if ' '.join(childs[0].attrs['class']).find('text-info') > -1:
+                        classes.append('callout--info')
+                    elif ' '.join(childs[0].attrs['class']).find('text-warning') > -1:
+                        classes.append('callout--warning')
+                    elif ' '.join(childs[0].attrs['class']).find('text-danger') > -1:
+                        classes.append('callout--danger')
+                    else:
+                        print(' '.join(childs[0].attrs['class']))
+                        raise AssertionError('Not found class')
+
+                    childs[0].decompose()
+                    # remove the index 0 from the childs array
+                    del childs[0]
 
                 subchilds = list(childs[0].children)
                 if subchilds[0].name == 'svg':
@@ -285,6 +292,10 @@ class Gitbook(KnowledgeBaseImporter):
                 childs[0].unwrap()
                 item.attrs['class'] = classes
 
+                childs = list(item.children)
+                if childs[0].name == 'p':
+                    childs[0].name = 'div'
+
             elif item.name == 'div':
                 if 'class' in item.attrs:
                     del item.attrs['class']
@@ -292,7 +303,6 @@ class Gitbook(KnowledgeBaseImporter):
                 if 'title' in item.attrs:
                     del item.attrs['title']
             else:
-                print(item)
                 raise AssertionError('Unexpected item {}'.format(item.name))
 
             keys = list(item.attrs.keys())
@@ -306,7 +316,7 @@ class Gitbook(KnowledgeBaseImporter):
 
         for div in content.find_all('div'):
             childs = list(div.children)
-            if len(childs) == 1 and childs[0].name == 'div':
+            if len(childs) == 1 and childs[0].name == 'div' and 'callout' not in (div.attrs.get('class', []) or []):
                 div.unwrap()
 
         return str(content)
