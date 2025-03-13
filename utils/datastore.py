@@ -2,7 +2,7 @@
 
 from slugify import slugify
 from uuid import uuid4
-import logging
+import logging, datetime
 
 
 class KnowledgeData(dict):
@@ -116,6 +116,12 @@ class KnowledgeData(dict):
         if last_updated and not created:
             created = last_updated
 
+        if created:
+            created = self.parse_date(created)
+
+        if last_updated:
+            last_updated = self.parse_date(last_updated)
+
         identifier = self._add_to_store('articles', {
             'title': title,
             'content': content,
@@ -130,6 +136,21 @@ class KnowledgeData(dict):
 
         logging.getLogger('knowledge-base-exporter').info('Added article: {}'.format(title))
         return identifier
+
+    def parse_date(self, dt):
+        if isinstance(dt, datetime.datetime):
+            return dt.isoformat()
+
+        if isinstance(dt, str) and dt.isdigit():
+            dt = int(dt)
+
+        if isinstance(dt, int):
+            if dt > 9999999999:
+                dt = dt / 1000
+
+            return datetime.datetime.fromtimestamp(dt).isoformat()
+
+        return dt
 
     def add_article_to_category(self, article_id, category_id):
         if category_id is None and category_id not in self.categories:
