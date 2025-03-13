@@ -9,11 +9,11 @@ HEADING_MAPPER = {'heading': 'h2', 'subheading': 'h3', 'subheading3': 'h4', 'sub
 
 
 class Next(KnowledgeBaseImporter):
-    def load(self, base_url: str):
+    def load(self, base_url: str, language=None):
         if not base_url.endswith('/'):
             base_url += '/'
 
-        self.add_language('en', base_url)
+        self.add_language(language or 'en', base_url)
         data = self.retrieve(self.base_url)
 
         metadata = {
@@ -67,9 +67,20 @@ class Next(KnowledgeBaseImporter):
             self.get_collections(item, None)
 
     def retrieve(self, url):
+        url = self.get_url(url)
         soup = super().retrieve(url)
         d = soup.find('script', {'id': '__NEXT_DATA__'})
-        return json.loads(d.string)
+
+        if not d:
+            self.remove_cache(url)
+            raise AssertionError('Could not find __NEXT_DATA__ script tag.')
+
+        data = json.loads(d.string)
+        if data['page'] == '/404':
+            self.remove_cache(url)
+            raise AssertionError('Page not found')
+
+        return data
 
     def get_article(self, url, collection_id):
         slug = url[url.rfind('/') + 1:]
